@@ -1,0 +1,5 @@
+# security.txt — https://securitytxt.org/
+Contact: mailto:security@soep.org
+Expires: 2027-03-14T00:00:00.000Z
+Preferred-Languages: en, nl
+Canonical: https://soep.org/.well-known/security.txt

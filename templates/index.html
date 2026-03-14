@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Soep's Website</title>
-  <style>
+  <style nonce="{{ request.state.csp_nonce }}">
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
@@ -136,26 +136,25 @@
 </head>
 <body>
   <div class="card">
-    <img src="/images/soep.gif" alt="soep.org" class="avatar"
-         onerror="this.style.display='none'">
+    <img src="/images/soep.gif" alt="soep.org" class="avatar" id="avatar">
     <h1>Your IP Address</h1>
 
     <div class="ip-section">
       <div class="ip-label">IPv4</div>
       <div class="ip-value loading" id="ipv4">Detecting&hellip;</div>
-      <button class="copy-btn" onclick="copyIP('ipv4', this)">Copy</button>
+      <button class="copy-btn" data-target="ipv4">Copy</button>
     </div>
 
     <div class="ip-section">
       <div class="ip-label">IPv6</div>
       <div class="ip-value loading" id="ipv6">Detecting&hellip;</div>
-      <button class="copy-btn" onclick="copyIP('ipv6', this)">Copy</button>
+      <button class="copy-btn" data-target="ipv6">Copy</button>
     </div>
 
     <div class="footer">Powered by soep.org</div>
   </div>
 
-  <script>
+  <script nonce="{{ request.state.csp_nonce }}">
     async function fetchIP(url, elementId) {
       const el = document.getElementById(elementId);
       try {
@@ -174,21 +173,23 @@
     function copyIP(id, btn) {
       const text = document.getElementById(id).textContent;
       if (!text || text === 'Detecting…' || text === 'Not available') return;
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      ta.style.position = 'fixed';
-      ta.style.opacity = '0';
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-      btn.classList.add('copied');
-      btn.textContent = 'Copied!';
-      setTimeout(() => { btn.classList.remove('copied'); btn.textContent = 'Copy'; }, 1500);
+      navigator.clipboard.writeText(text).then(() => {
+        btn.classList.add('copied');
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.classList.remove('copied'); btn.textContent = 'Copy'; }, 1500);
+      });
     }
 
-    fetchIP('https://api4.ipify.org', 'ipv4');
-    fetchIP('https://api6.ipify.org', 'ipv6');
+    document.getElementById('avatar').addEventListener('error', function() {
+      this.style.display = 'none';
+    });
+
+    document.querySelectorAll('.copy-btn').forEach(btn => {
+      btn.addEventListener('click', () => copyIP(btn.dataset.target, btn));
+    });
+
+    fetchIP('https://ipv4.soep.org/api/ip', 'ipv4');
+    fetchIP('https://ipv6.soep.org/api/ip', 'ipv6');
   </script>
 </body>
 </html>

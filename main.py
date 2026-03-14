@@ -1,14 +1,45 @@
 from fastapi import FastAPI, Request
 from fastapi.exceptions import HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
+import secrets
 import socket
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://soep.org",
+        "https://ipv4.soep.org",
+        "https://ipv6.soep.org",
+    ],
+    allow_methods=["GET"],
+)
 app.mount("/images", StaticFiles(directory="images"), name="images")
 templates = Jinja2Templates(directory="templates")
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    nonce = secrets.token_urlsafe(32)
+    request.state.csp_nonce = nonce
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Content-Security-Policy"] = (
+        f"default-src 'none'; "
+        f"script-src 'nonce-{nonce}'; "
+        f"style-src 'nonce-{nonce}'; "
+        f"img-src 'self'; "
+        f"connect-src https://ipv4.soep.org https://ipv6.soep.org; "
+        f"frame-src 'none'; "
+        f"frame-ancestors 'none'; "
+        f"form-action 'none'; "
+        f"base-uri 'none'"
+    )
+    return response
 
 ERROR_MESSAGES = {
     400: ("Bad Request", "The server could not understand your request."),
@@ -39,6 +70,12 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     }, status_code=exc.status_code)
 
 
+@app.get("/.well-known/security.txt", response_class=PlainTextResponse)
+async def security_txt():
+    with open("static/security.txt") as f:
+        return f.read()
+
+
 def get_client_ip(request: Request) -> str:
     ip = request.client.host if request.client else "unknown"
     if forwarded := request.headers.get("x-forwarded-for"):
@@ -48,40 +85,19 @@ def get_client_ip(request: Request) -> str:
     return ip
 
 
-def resolve_addresses(hostname: str) -> dict[str, str | None]:
-    ipv4 = None
-    ipv6 = None
-    try:
-        results = socket.getaddrinfo(hostname, None)
-        for family, _, _, _, sockaddr in results:
-            if family == socket.AF_INET and ipv4 is None:
-                ipv4 = sockaddr[0]
-            elif family == socket.AF_INET6 and ipv6 is None:
-                ipv6 = sockaddr[0]
-    except socket.gaierror:
-        pass
-    return {"ipv4": ipv4, "ipv6": ipv6}
+@app.get("/favicon.ico", response_class=FileResponse)
+async def favicon():
+    return FileResponse("images/favicon.ico", media_type="image/x-icon")
 
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    client_ip = get_client_ip(request)
-
-    addresses = resolve_addresses(socket.gethostname())
-    server_ipv4 = addresses["ipv4"] or "not available"
-    server_ipv6 = addresses["ipv6"] or "not available"
-
-    return templates.TemplateResponse("index.html", {
-        "request": request,
-        "client_ip": client_ip,
-        "server_ipv4": server_ipv4,
-        "server_ipv6": server_ipv6,
-    })
+    return templates.TemplateResponse("index.html", {"request": request})
 
 
-@app.get("/api/ip")
+@app.get("/api/ip", response_class=PlainTextResponse)
 async def api_ip(request: Request):
-    return {"ip": get_client_ip(request)}
+    return get_client_ip(request)
 
 
 @app.get("/headers", response_class=HTMLResponse)

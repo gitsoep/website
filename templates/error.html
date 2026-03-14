@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ status_code }} - {{ title }}</title>
-  <style>
+  <style nonce="{{ request.state.csp_nonce }}">
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
@@ -86,13 +86,18 @@
 </head>
 <body>
   <div class="card">
-    <img src="/images/soep.gif" alt="soep.org" class="avatar"
-         onerror="this.style.display='none'">
+    <img src="/images/soep.gif" alt="soep.org" class="avatar" id="avatar">
     <div class="error-code">{{ status_code }}</div>
     <h1>{{ title }}</h1>
     <p class="message">{{ message }}</p>
     <a href="/" class="home-link">Go Home</a>
     <div class="footer">Powered by soep.org</div>
   </div>
+
+  <script nonce="{{ request.state.csp_nonce }}">
+    document.getElementById('avatar').addEventListener('error', function() {
+      this.style.display = 'none';
+    });
+  </script>
 </body>
 </html>

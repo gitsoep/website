@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Soep Headers</title>
-  <style>
+  <style nonce="{{ request.state.csp_nonce }}">
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
@@ -96,8 +96,7 @@
 </head>
 <body>
   <div class="card">
-    <img src="/images/soep.gif" alt="soep.org" class="avatar"
-         onerror="this.style.display='none'">
+    <img src="/images/soep.gif" alt="soep.org" class="avatar" id="avatar">
     <h1>HTTP Headers</h1>
 
     {% for name, value in headers.items() %}
@@ -109,5 +108,11 @@
 
     <div class="footer">Powered by soep.org</div>
   </div>
+
+  <script nonce="{{ request.state.csp_nonce }}">
+    document.getElementById('avatar').addEventListener('error', function() {
+      this.style.display = 'none';
+    });
+  </script>
 </body>
 </html>
