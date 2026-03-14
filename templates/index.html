@@ -62,35 +62,15 @@
 
     .ip-section:hover {
       border-color: #4a4a4a;
+      cursor: pointer;
+    }
+
+    .ip-section.copied {
+      border-color: #6a6;
     }
 
     .ip-section:last-child {
       margin-bottom: 0;
-    }
-
-    .copy-btn {
-      background: none;
-      border: 1px solid #444;
-      border-radius: 6px;
-      color: #888;
-      cursor: pointer;
-      padding: 4px 10px;
-      font-size: 0.7rem;
-      font-family: inherit;
-      line-height: 1.4;
-      white-space: nowrap;
-      flex-shrink: 0;
-      transition: color 0.2s, border-color 0.2s;
-    }
-
-    .copy-btn:hover {
-      color: #ccc;
-      border-color: #666;
-    }
-
-    .copy-btn.copied {
-      color: #6a6;
-      border-color: #6a6;
     }
 
     .ip-label {
@@ -139,16 +119,14 @@
     <img src="/images/soep.gif" alt="soep.org" class="avatar" id="avatar">
     <h1>Your IP Address</h1>
 
-    <div class="ip-section">
+    <div class="ip-section" data-target="ipv4">
       <div class="ip-label">IPv4</div>
       <div class="ip-value loading" id="ipv4">Detecting&hellip;</div>
-      <button class="copy-btn" data-target="ipv4">Copy</button>
     </div>
 
-    <div class="ip-section">
+    <div class="ip-section" data-target="ipv6">
       <div class="ip-label">IPv6</div>
       <div class="ip-value loading" id="ipv6">Detecting&hellip;</div>
-      <button class="copy-btn" data-target="ipv6">Copy</button>
     </div>
 
     <div class="footer">Powered by soep.org</div>
@@ -170,13 +148,13 @@
       }
     }
 
-    function copyIP(id, btn) {
-      const text = document.getElementById(id).textContent;
+    function copyIP(section) {
+      const el = document.getElementById(section.dataset.target);
+      const text = el.textContent;
       if (!text || text === 'Detecting…' || text === 'Not available') return;
       navigator.clipboard.writeText(text).then(() => {
-        btn.classList.add('copied');
-        btn.textContent = 'Copied!';
-        setTimeout(() => { btn.classList.remove('copied'); btn.textContent = 'Copy'; }, 1500);
+        section.classList.add('copied');
+        setTimeout(() => section.classList.remove('copied'), 1500);
       });
     }
 
@@ -184,8 +162,8 @@
       this.style.display = 'none';
     });
 
-    document.querySelectorAll('.copy-btn').forEach(btn => {
-      btn.addEventListener('click', () => copyIP(btn.dataset.target, btn));
+    document.querySelectorAll('.ip-section').forEach(section => {
+      section.addEventListener('click', () => copyIP(section));
     });
 
     fetchIP('https://ipv4.soep.org/api/ip', 'ipv4');
