@@ -8,7 +8,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 import secrets
 import socket
 
-app = FastAPI()
+app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
