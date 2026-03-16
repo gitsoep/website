@@ -1,6 +1,6 @@
 services:
   website:
-    build: .
+    image: ghcr.io/gitsoep/website:latest
     ports:
       - "8089:8000"
     restart: unless-stopped
