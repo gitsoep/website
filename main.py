@@ -62,12 +62,16 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
         exc.status_code,
         (exc.detail, "An unexpected error occurred."),
     )
-    return templates.TemplateResponse("error.html", {
-        "request": request,
-        "status_code": exc.status_code,
-        "title": title,
-        "message": message,
-    }, status_code=exc.status_code)
+    return templates.TemplateResponse(
+        request=request,
+        name="error.html",
+        context={
+            "status_code": exc.status_code,
+            "title": title,
+            "message": message,
+        },
+        status_code=exc.status_code,
+    )
 
 
 @app.get("/.well-known/security.txt", response_class=PlainTextResponse)
@@ -92,7 +96,7 @@ async def favicon():
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="index.html")
 
 
 @app.get("/api/ip", response_class=PlainTextResponse)
@@ -102,10 +106,11 @@ async def api_ip(request: Request):
 
 @app.get("/headers", response_class=HTMLResponse)
 async def headers_page(request: Request):
-    return templates.TemplateResponse("headers.html", {
-        "request": request,
-        "headers": dict(request.headers),
-    })
+    return templates.TemplateResponse(
+        request=request,
+        name="headers.html",
+        context={"headers": dict(request.headers)},
+    )
 
 
 @app.get("/api/headers")
