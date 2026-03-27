@@ -15,6 +15,7 @@ app.add_middleware(
         "https://soep.org",
         "https://ipv4.soep.org",
         "https://ipv6.soep.org",
+        "https://analytics.soep.org",
     ],
     allow_methods=["GET"],
 )
