@@ -34,7 +34,7 @@ async def security_headers(request: Request, call_next):
         f"script-src 'nonce-{nonce}'; "
         f"style-src 'nonce-{nonce}'; "
         f"img-src 'self'; "
-        f"connect-src https://ipv4.soep.org https://ipv6.soep.org; "
+        f"connect-src https://ipv4.soep.org https://ipv6.soep.org https://analytics.soep.org; "
         f"frame-src 'none'; "
         f"frame-ancestors 'none'; "
         f"form-action 'none'; "
