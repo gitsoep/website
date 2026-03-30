@@ -113,12 +113,13 @@
       color: #555555;
     }
   </style>
+{% if analytics_enabled %}
 <script
     src="https://analytics.soep.org/api/script.js"
     data-site-id="e2ce8ad1a333"
-    nonce="{{ request.state.csp_nonce }}"
     defer
 ></script>
+{% endif %}
 </head>
 <body>
   <div class="card">

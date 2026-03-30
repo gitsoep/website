@@ -5,8 +5,19 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
+import os
 import secrets
 import socket
+
+
+def env_bool(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+ANALYTICS_ENABLED = env_bool("ENABLE_ANALYTICS", default=False)
 
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 app.add_middleware(
@@ -21,6 +32,7 @@ app.add_middleware(
 )
 app.mount("/images", StaticFiles(directory="images"), name="images")
 templates = Jinja2Templates(directory="templates")
+templates.env.globals["analytics_enabled"] = ANALYTICS_ENABLED
 
 
 @app.middleware("http")

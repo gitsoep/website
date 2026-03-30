@@ -2,5 +2,7 @@ services:
   website:
     image: ghcr.io/gitsoep/website:latest
     ports:
-      - "8089:8000"
+      - "8000:8000"
+    environment:
+      - ENABLE_ANALYTICS=true
     restart: unless-stopped
