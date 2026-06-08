@@ -1,13 +1,12 @@
 from fastapi import FastAPI, Request
-from fastapi.exceptions import HTTPException
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 import os
 import secrets
-import socket
 
 
 def env_bool(name: str, default: bool = False) -> bool:
@@ -18,8 +17,13 @@ def env_bool(name: str, default: bool = False) -> bool:
 
 
 ANALYTICS_ENABLED = env_bool("ENABLE_ANALYTICS", default=False)
+VERSION = os.getenv("APP_VERSION", "0.1.1")
+
+with open("static/security.txt") as _f:
+    SECURITY_TXT = _f.read()
 
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+app.add_middleware(GZipMiddleware, minimum_size=512)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -33,6 +37,7 @@ app.add_middleware(
 app.mount("/images", StaticFiles(directory="images"), name="images")
 templates = Jinja2Templates(directory="templates")
 templates.env.globals["analytics_enabled"] = ANALYTICS_ENABLED
+templates.env.globals["version"] = VERSION
 
 
 @app.middleware("http")
@@ -40,7 +45,17 @@ async def security_headers(request: Request, call_next):
     nonce = secrets.token_urlsafe(32)
     request.state.csp_nonce = nonce
     response = await call_next(request)
+    if request.url.path.startswith("/images/"):
+        response.headers.setdefault("Cache-Control", "public, max-age=86400, immutable")
     response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
+    response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+    response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
+    response.headers["Permissions-Policy"] = (
+        "accelerometer=(), camera=(), geolocation=(), gyroscope=(), "
+        "magnetometer=(), microphone=(), payment=(), usb=(), interest-cohort=()"
+    )
     response.headers["Content-Security-Policy"] = (
         f"default-src 'none'; "
         f"script-src 'nonce-{nonce}'; "
@@ -89,8 +104,12 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
 
 @app.get("/.well-known/security.txt", response_class=PlainTextResponse)
 async def security_txt():
-    with open("static/security.txt") as f:
-        return f.read()
+    return SECURITY_TXT
+
+
+@app.get("/health", response_class=PlainTextResponse)
+async def health():
+    return "ok"
 
 
 def get_client_ip(request: Request) -> str:
@@ -127,5 +146,5 @@ async def headers_page(request: Request):
 
 
 @app.get("/api/headers")
-async def api_headers(request: Request):
+async def api_headers(request: Request) -> dict[str, str]:
     return dict(request.headers)
