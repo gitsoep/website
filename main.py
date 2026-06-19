@@ -131,6 +131,11 @@ async def home(request: Request):
     return templates.TemplateResponse(request=request, name="index.html")
 
 
+@app.get("/dash", response_class=HTMLResponse)
+async def dashboard(request: Request):
+    return templates.TemplateResponse(request=request, name="dash.html")
+
+
 @app.get("/api/ip", response_class=PlainTextResponse)
 async def api_ip(request: Request):
     return get_client_ip(request)

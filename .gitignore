@@ -23,3 +23,7 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+
+#Don't
+bookmarks_*
+templates/dash.html
