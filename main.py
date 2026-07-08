@@ -136,6 +136,11 @@ async def dashboard(request: Request):
     return templates.TemplateResponse(request=request, name="dash.html")
 
 
+@app.get("/matrix", response_class=HTMLResponse)
+async def matrix_page(request: Request):
+    return templates.TemplateResponse(request=request, name="matrix.html")
+
+
 @app.get("/api/ip", response_class=PlainTextResponse)
 async def api_ip(request: Request):
     return get_client_ip(request)

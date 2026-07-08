@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}Digital Rain{% endblock %}
+{% block extra_styles %}
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: #000000;
+      overflow: hidden;
+    }
+
+    #rain {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      display: block;
+      z-index: 0;
+      background: #000000;
+    }
+
+    .card {
+      position: relative;
+      z-index: 1;
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      padding: 0;
+      pointer-events: none;
+    }
+
+    .card h1 {
+      color: #00ff41;
+      text-shadow: 0 0 10px rgba(0, 255, 65, 0.6);
+      font-family: "Courier New", Courier, monospace;
+      letter-spacing: 0.08em;
+    }
+
+    .card .footer {
+      color: #3eb85f;
+    }
+{% endblock %}
+{% block content %}
+    <canvas id="rain" aria-label="Matrix digital rain animation"></canvas>
+    <h1>Matrix Digital Rain</h1>
+{% endblock %}
+{% block scripts %}
+  <script nonce="{{ request.state.csp_nonce }}">
+    (function() {
+      const canvas = document.getElementById('rain');
+      const ctx = canvas.getContext('2d', { alpha: false });
+
+      const glyphs = (
+        'ABCDEFGHIJKLMNOPQRSTUVWXYZ' +
+        '0123456789' +
+        '\u30A1\u30A2\u30A3\u30A4\u30A5\u30A6\u30A7\u30A8\u30A9\u30AA' +
+        '\u30AB\u30AD\u30AF\u30B1\u30B3\u30B5\u30B7\u30B9\u30BB\u30BD' +
+        '\u30BF\u30C1\u30C4\u30C6\u30C8\u30CA\u30CB\u30CC\u30CD\u30CE' +
+        '\u30CF\u30D2\u30D5\u30D8\u30DB\u30DE\u30DF\u30E0\u30E1\u30E2' +
+        '\u30E4\u30E6\u30E8\u30E9\u30EA\u30EB\u30EC\u30ED\u30EF\u30F3'
+      );
+
+      let width = 0;
+      let height = 0;
+      let fontSize = 18;
+      let columns = 0;
+      let drops = [];
+
+      function resize() {
+        const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
+        width = window.innerWidth;
+        height = window.innerHeight;
+
+        canvas.width = Math.floor(width * dpr);
+        canvas.height = Math.floor(height * dpr);
+        canvas.style.width = width + 'px';
+        canvas.style.height = height + 'px';
+
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        fontSize = width < 700 ? 14 : 18;
+        columns = Math.floor(width / fontSize);
+        drops = new Array(columns);
+
+        for (let i = 0; i < columns; i += 1) {
+          drops[i] = Math.floor(Math.random() * -100);
+        }
+
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, width, height);
+      }
+
+      function draw() {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.09)';
+        ctx.fillRect(0, 0, width, height);
+
+        ctx.font = fontSize + 'px monospace';
+        ctx.shadowBlur = 0;
+
+        for (let i = 0; i < columns; i += 1) {
+          const text = glyphs.charAt(Math.floor(Math.random() * glyphs.length));
+          const x = i * fontSize;
+          const y = drops[i] * fontSize;
+
+          ctx.fillStyle = '#00ff41';
+          ctx.fillText(text, x, y);
+
+          if (Math.random() > 0.975) {
+            ctx.fillStyle = '#d7ffd7';
+            ctx.fillText(text, x, y - fontSize);
+          }
+
+          if (y > height && Math.random() > 0.985) {
+            drops[i] = Math.floor(Math.random() * -40);
+          }
+
+          drops[i] += 1;
+        }
+      }
+
+      let frameId = null;
+      function animate() {
+        draw();
+        frameId = window.requestAnimationFrame(animate);
+      }
+
+      window.addEventListener('resize', resize);
+      document.addEventListener('visibilitychange', function() {
+        if (document.hidden) {
+          if (frameId !== null) {
+            window.cancelAnimationFrame(frameId);
+            frameId = null;
+          }
+        } else if (frameId === null) {
+          animate();
+        }
+      });
+
+      resize();
+      animate();
+    })();
+  </script>
+{% endblock %}
