@@ -17,7 +17,7 @@ def env_bool(name: str, default: bool = False) -> bool:
 
 
 ANALYTICS_ENABLED = env_bool("ENABLE_ANALYTICS", default=False)
-VERSION = os.getenv("APP_VERSION", "0.1.1")
+VERSION = os.getenv("APP_VERSION", "0.1.2")
 
 with open("static/security.txt") as _f:
     SECURITY_TXT = _f.read()
@@ -30,7 +30,6 @@ app.add_middleware(
         "https://soep.org",
         "https://ipv4.soep.org",
         "https://ipv6.soep.org",
-        "https://analytics.soep.org",
     ],
     allow_methods=["GET"],
 )
@@ -61,7 +60,7 @@ async def security_headers(request: Request, call_next):
         f"script-src 'nonce-{nonce}'; "
         f"style-src 'nonce-{nonce}'; "
         f"img-src 'self'; "
-        f"connect-src https://ipv4.soep.org https://ipv6.soep.org https://analytics.soep.org; "
+        f"connect-src https://ipv4.soep.org https://ipv6.soep.org https://openpanel.soep.org; "
         f"frame-src 'none'; "
         f"frame-ancestors 'none'; "
         f"form-action 'none'; "
