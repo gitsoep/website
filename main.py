@@ -34,6 +34,7 @@ app.add_middleware(
     allow_methods=["GET"],
 )
 app.mount("/images", StaticFiles(directory="images"), name="images")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 templates.env.globals["analytics_enabled"] = ANALYTICS_ENABLED
 templates.env.globals["version"] = VERSION
