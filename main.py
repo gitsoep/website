@@ -15,9 +15,26 @@ def env_bool(name: str, default: bool = False) -> bool:
         return default
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
+DEFAULT_ANALYTICS_HTML = """<script nonce="__CSP_NONCE__">
+  window.op=window.op||function(){var n=[];return new Proxy(function(){arguments.length&&n.push([].slice.call(arguments))},{get:function(t,r){return"q"===r?n:function(){n.push([r].concat([].slice.call(arguments)))}} ,has:function(t,r){return"q"===r}}) }();
+  window.op('init', {
+    apiUrl: 'https://openpanel.soep.org/api',
+    clientId: '92828103-e7ec-4acd-8584-26da574d1014',
+    trackScreenViews: true,
+    trackOutgoingLinks: true,
+    trackAttributes: true,
+    // sessionReplay: {
+    //   enabled: true,
+    // },
+  });
+</script>
+<script src="https://soep.org/static/op1.js" nonce="__CSP_NONCE__" defer async></script>"""
+ANALYTICS_HTML = os.getenv("ANALYTICS_HTML", DEFAULT_ANALYTICS_HTML)
+ANALYTICS_ENABLED = env_bool("ENABLE_ANALYTICS", default=False) or os.getenv("ANALYTICS_HTML") is not None
+VERSION = os.getenv("APP_VERSION", "0.1.3")
 
-ANALYTICS_ENABLED = env_bool("ENABLE_ANALYTICS", default=False)
-VERSION = os.getenv("APP_VERSION", "0.1.2")
+def analytics_html(nonce: str) -> str:
+    return ANALYTICS_HTML.replace("__CSP_NONCE__", nonce)
 
 with open("static/security.txt") as _f:
     SECURITY_TXT = _f.read()
@@ -37,6 +54,7 @@ app.mount("/images", StaticFiles(directory="images"), name="images")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 templates.env.globals["analytics_enabled"] = ANALYTICS_ENABLED
+templates.env.globals["analytics_html"] = analytics_html
 templates.env.globals["version"] = VERSION
 
 
