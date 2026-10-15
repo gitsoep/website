@@ -31,7 +31,7 @@ DEFAULT_ANALYTICS_HTML = """<script nonce="__CSP_NONCE__">
 <script src="https://soep.org/static/op1.js" nonce="__CSP_NONCE__" defer async></script>"""
 ANALYTICS_HTML = os.getenv("ANALYTICS_HTML", DEFAULT_ANALYTICS_HTML)
 ANALYTICS_ENABLED = env_bool("ENABLE_ANALYTICS", default=False) or os.getenv("ANALYTICS_HTML") is not None
-VERSION = os.getenv("APP_VERSION", "0.1.3")
+VERSION = os.getenv("APP_VERSION", "0.1.4")
 
 def analytics_html(nonce: str) -> str:
     return ANALYTICS_HTML.replace("__CSP_NONCE__", nonce)
