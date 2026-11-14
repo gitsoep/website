@@ -149,11 +149,6 @@ async def home(request: Request):
     return templates.TemplateResponse(request=request, name="index.html")
 
 
-@app.get("/dash", response_class=HTMLResponse)
-async def dashboard(request: Request):
-    return templates.TemplateResponse(request=request, name="dash.html")
-
-
 @app.get("/matrix", response_class=HTMLResponse)
 async def matrix_page(request: Request):
     return templates.TemplateResponse(request=request, name="matrix.html")
