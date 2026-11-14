@@ -38,6 +38,21 @@ def analytics_html(nonce: str) -> str:
 
 with open("static/security.txt") as _f:
     SECURITY_TXT = _f.read()
+with open("static/robots.txt") as _f:
+    ROBOTS_TXT = _f.read()
+with open("static/humans.txt") as _f:
+    HUMANS_TXT = _f.read()
+
+SOUP_BOWL = r"""
+       (  )   (   )  )
+        ) (   )  (  (
+        ( )  (    ) )
+     _____________________
+    <_____________________>
+     \                   /
+      \     soep.org    /
+       \_______________/
+"""
 
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 app.add_middleware(GZipMiddleware, minimum_size=512)
@@ -56,6 +71,7 @@ templates = Jinja2Templates(directory="templates")
 templates.env.globals["analytics_enabled"] = ANALYTICS_ENABLED
 templates.env.globals["analytics_html"] = analytics_html
 templates.env.globals["version"] = VERSION
+templates.env.globals["soup_bowl"] = SOUP_BOWL
 
 
 @app.middleware("http")
@@ -65,6 +81,7 @@ async def security_headers(request: Request, call_next):
     response = await call_next(request)
     if request.url.path.startswith("/images/"):
         response.headers.setdefault("Cache-Control", "public, max-age=86400, immutable")
+    response.headers["X-Powered-By"] = "Soep"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
@@ -125,6 +142,16 @@ async def security_txt():
     return SECURITY_TXT
 
 
+@app.get("/robots.txt", response_class=PlainTextResponse)
+async def robots_txt():
+    return ROBOTS_TXT
+
+
+@app.get("/humans.txt", response_class=PlainTextResponse)
+async def humans_txt():
+    return HUMANS_TXT
+
+
 @app.get("/health", response_class=PlainTextResponse)
 async def health():
     return "ok"
@@ -144,19 +171,62 @@ async def favicon():
     return FileResponse("images/favicon.ico", media_type="image/x-icon")
 
 
+CLI_AGENTS = ("curl/", "wget/", "httpie/", "xh/")
+
+
+def is_cli_client(request: Request) -> bool:
+    return request.headers.get("user-agent", "").lower().startswith(CLI_AGENTS)
+
+
+def whoami_text(request: Request, include_headers: bool) -> str:
+    lines = [
+        SOUP_BOWL,
+        f"  IP:         {get_client_ip(request)}",
+        f"  User-Agent: {request.headers.get('user-agent', 'unknown')}",
+    ]
+    if include_headers:
+        lines += ["", "  Headers:"]
+        lines += [f"    {name}: {value}" for name, value in request.headers.items()]
+    else:
+        lines += ["", "  More: curl soep.org/whoami"]
+    return "\n".join(lines) + "\n\n"
+
+
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    return templates.TemplateResponse(request=request, name="index.html")
+    if is_cli_client(request):
+        return PlainTextResponse(whoami_text(request, include_headers=False), headers={"Vary": "User-Agent"})
+    response = templates.TemplateResponse(request=request, name="index.html")
+    response.headers["Vary"] = "User-Agent"
+    return response
 
 
-@app.get("/dash", response_class=HTMLResponse)
-async def dashboard(request: Request):
-    return templates.TemplateResponse(request=request, name="dash.html")
+@app.get("/whoami", response_class=PlainTextResponse)
+async def whoami(request: Request):
+    return whoami_text(request, include_headers=True)
 
 
 @app.get("/matrix", response_class=HTMLResponse)
 async def matrix_page(request: Request):
     return templates.TemplateResponse(request=request, name="matrix.html")
+
+
+@app.get("/random", response_class=HTMLResponse)
+async def random_page(request: Request):
+    return templates.TemplateResponse(request=request, name="random.html")
+
+
+@app.get("/terminal", response_class=HTMLResponse)
+async def terminal_page(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="terminal.html",
+        context={
+            "ip": get_client_ip(request),
+            "security_txt": SECURITY_TXT,
+            "soup_bowl": SOUP_BOWL.strip("\n"),
+        },
+    )
 
 
 @app.get("/api/ip", response_class=PlainTextResponse)
