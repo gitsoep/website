@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+{% block title %}Soep Terminal{% endblock %}
+{% block card_min_width %}min(760px, 90vw){% endblock %}
+{% block extra_styles %}
+    .terminal {
+      background: #0d0d0d;
+      border: 1px solid #333333;
+      border-radius: 12px;
+      height: min(60vh, 520px);
+      padding: 16px;
+      overflow-y: auto;
+      text-align: left;
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+      font-size: 0.9rem;
+      line-height: 1.45;
+      color: #d0d0d0;
+      cursor: text;
+    }
+
+    .terminal.shake { animation: shake 0.4s linear 3; }
+    @keyframes shake {
+      0%, 100% { transform: translate(0, 0); }
+      25% { transform: translate(-6px, 2px); }
+      50% { transform: translate(5px, -3px); }
+      75% { transform: translate(-3px, -2px); }
+    }
+
+    .out { white-space: pre-wrap; word-break: break-word; }
+    .out.err { color: #ff6b6b; }
+    .out.ok { color: #6bff8f; }
+    .out.dim { color: #777777; }
+
+    .prompt { color: #6bff8f; white-space: pre; }
+    .prompt .path { color: #6bb8ff; }
+
+    .line { display: flex; }
+    .line input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: inherit;
+      font: inherit;
+      caret-color: #6bff8f;
+      padding: 0;
+    }
+{% endblock %}
+{% block content %}
+    <h1>Terminal</h1>
+    <div class="terminal" id="term" role="log" aria-live="polite">
+      <div id="output"></div>
+      <div class="line" id="line">
+        <span class="prompt">guest@soep.org:<span class="path">~</span>$&nbsp;</span>
+        <input id="cmd" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Command" autofocus>
+      </div>
+    </div>
+{% endblock %}
+{% block scripts %}
+  <script nonce="{{ request.state.csp_nonce }}">
+    (function() {
+      const CLIENT_IP = {{ ip | tojson }};
+      const SECURITY_TXT = {{ security_txt | tojson }};
+      const SOUP_BOWL = {{ soup_bowl | tojson }};
+      const VERSION = {{ version | tojson }};
+
+      const term = document.getElementById('term');
+      const output = document.getElementById('output');
+      const line = document.getElementById('line');
+      const input = document.getElementById('cmd');
+
+      const FILES = {
+        'readme.txt': 'Welcome to soep.org!\nType "help" to see what you can do here.\n',
+        'security.txt': SECURITY_TXT,
+        'soup.txt': SOUP_BOWL,
+        '.secret': 'The secret ingredient is love. And a little bit of salt.\n',
+      };
+      const PAGES = { home: '/', matrix: '/matrix', random: '/random', headers: '/headers' };
+
+      const history = [];
+      let historyIndex = 0;
+      let busy = false;
+
+      function print(text, cls) {
+        const div = document.createElement('div');
+        div.className = 'out' + (cls ? ' ' + cls : '');
+        div.textContent = text;
+        output.appendChild(div);
+        term.scrollTop = term.scrollHeight;
+      }
+
+      function echoPrompt(cmd) {
+        const div = document.createElement('div');
+        div.className = 'out';
+        const prompt = line.querySelector('.prompt').cloneNode(true);
+        div.appendChild(prompt);
+        div.appendChild(document.createTextNode(cmd));
+        output.appendChild(div);
+      }
+
+      const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+      async function rmRf() {
+        busy = true;
+        line.style.display = 'none';
+        print('[sudo] password for guest: ********', 'dim');
+        await sleep(700);
+        const victims = ['/bin', '/boot', '/etc', '/home/guest', '/lib', '/opt', '/root',
+                         '/usr/bin', '/usr/lib', '/var/www/soep.org', '/var/soup/recipes', '/kitchen/stove'];
+        for (const v of victims) {
+          print(`removed directory '${v}'`, 'err');
+          await sleep(110 + Math.random() * 150);
+        }
+        term.classList.add('shake');
+        await sleep(1200);
+        term.classList.remove('shake');
+        print('Kernel panic - not syncing: soup spilled', 'err');
+        await sleep(1200);
+        print('\nJust kidding. Nothing was deleted. 🍲', 'ok');
+        print('guest is not in the sudoers file. This incident will be reported.', 'dim');
+        line.style.display = '';
+        busy = false;
+        input.focus();
+      }
+
+      const COMMANDS = {
+        help: () => print([
+          'Available commands:',
+          '  help              show this help',
+          '  ls [-a]           list files',
+          '  cat <file>        print a file',
+          '  whoami            show who you are (well, your IP)',
+          '  echo <text>       print text',
+          '  pwd, cd, date     the usual',
+          '  uname [-a]        system information',
+          '  history           command history',
+          '  open <page>       go to ' + Object.keys(PAGES).join(', '),
+          '  clear             clear the screen (or Ctrl+L)',
+          '  exit              leave',
+        ].join('\n')),
+        ls: args => {
+          const all = args.some(a => a.startsWith('-') && a.includes('a'));
+          print(Object.keys(FILES).filter(f => all || !f.startsWith('.')).join('  '));
+        },
+        cat: args => {
+          if (!args.length) return print('cat: missing file operand', 'err');
+          args.forEach(f => f in FILES ? print(FILES[f].replace(/\n$/, '')) : print(`cat: ${f}: No such file or directory`, 'err'));
+        },
+        whoami: () => print(CLIENT_IP),
+        echo: args => print(args.join(' ')),
+        pwd: () => print('/home/guest'),
+        cd: args => {
+          if (!args.length || ['~', '.', '/home/guest'].includes(args[0])) return;
+          print(`cd: ${args[0]}: Permission denied. You're stuck in the soup.`, 'err');
+        },
+        date: () => print(new Date().toString()),
+        uname: args => print(args.includes('-a')
+          ? `SoepOS ${VERSION} soep.org x86_64 Broth/Linux (served hot)`
+          : 'SoepOS'),
+        history: () => print(history.map((h, i) => `${String(i + 1).padStart(4)}  ${h}`).join('\n')),
+        open: args => {
+          const url = PAGES[args[0]];
+          if (!url) return print(`open: try one of: ${Object.keys(PAGES).join(', ')}`, 'err');
+          print(`Opening ${url}...`, 'dim');
+          setTimeout(() => { location.href = url; }, 400);
+        },
+        clear: () => { output.replaceChildren(); },
+        exit: () => print('There is no escape. Try "open home".', 'dim'),
+        rm: () => print('rm: Permission denied', 'err'),
+        sudo: args => {
+          const cmd = args.join(' ').replace(/\s+/g, ' ').trim();
+          if (/^rm -(rf|fr|r -f|f -r) \/(\*)?( --no-preserve-root)?$/.test(cmd)) return rmRf();
+          print('guest is not in the sudoers file. This incident will be reported.', 'err');
+        },
+      };
+
+      function run(raw) {
+        const cmdline = raw.trim();
+        echoPrompt(raw);
+        if (!cmdline) return;
+        history.push(cmdline);
+        historyIndex = history.length;
+        const [name, ...args] = cmdline.split(/\s+/);
+        const fn = COMMANDS[name];
+        if (fn) fn(args);
+        else print(`${name}: command not found. Type "help" for a list of commands.`, 'err');
+        term.scrollTop = term.scrollHeight;
+      }
+
+      function complete() {
+        const parts = input.value.split(/\s+/);
+        const word = parts[parts.length - 1];
+        const pool = parts.length === 1 ? Object.keys(COMMANDS)
+                   : parts[0] === 'open' ? Object.keys(PAGES)
+                   : Object.keys(FILES);
+        const matches = pool.filter(c => c.startsWith(word));
+        if (matches.length === 1) {
+          parts[parts.length - 1] = matches[0];
+          input.value = parts.join(' ') + ' ';
+        } else if (matches.length > 1) {
+          echoPrompt(input.value);
+          print(matches.join('  '));
+        }
+      }
+
+      input.addEventListener('keydown', e => {
+        if (busy) return e.preventDefault();
+        if (e.key === 'Enter') {
+          const value = input.value;
+          input.value = '';
+          run(value);
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          if (historyIndex > 0) input.value = history[--historyIndex];
+        } else if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          historyIndex = Math.min(historyIndex + 1, history.length);
+          input.value = history[historyIndex] || '';
+        } else if (e.key === 'Tab') {
+          e.preventDefault();
+          complete();
+        } else if (e.ctrlKey && e.key === 'l') {
+          e.preventDefault();
+          output.replaceChildren();
+        } else if (e.ctrlKey && e.key === 'c') {
+          e.preventDefault();
+          echoPrompt(input.value + '^C');
+          input.value = '';
+        }
+      });
+
+      term.addEventListener('click', () => {
+        if (!window.getSelection().toString()) input.focus();
+      });
+
+      print(`SoepOS ${VERSION} (tty1)\n\nWelcome, ${CLIENT_IP}. Type "help" to get started.\n`, 'dim');
+      input.focus();
+    })();
+  </script>
+{% endblock %}

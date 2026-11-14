@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% block title %}Soep Random{% endblock %}
+{% block card_min_width %}min(560px, 90vw){% endblock %}
+{% block extra_styles %}
+    .row { flex-wrap: wrap; }
+    .row-value.clickable { cursor: pointer; }
+    .row.copied { border-color: #6a6; }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 12px;
+      width: 100%;
+      flex-wrap: wrap;
+      font-size: 0.8rem;
+      color: #888888;
+    }
+
+    .controls label { display: flex; align-items: center; gap: 4px; cursor: pointer; }
+
+    button, select, input[type="number"] {
+      background: #333333;
+      color: #e0e0e0;
+      border: 1px solid #444444;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    input[type="number"] { width: 4.5em; cursor: text; }
+    button:hover, select:hover { border-color: #666666; }
+    input[type="range"] { accent-color: #888888; }
+
+    .dice-total { color: #888888; font-size: 0.85rem; }
+{% endblock %}
+{% block content %}
+    <h1>Random</h1>
+
+    <div class="row" id="uuid-row">
+      <div class="row-label">UUID</div>
+      <div class="row-value clickable" id="uuid" title="Click to copy"></div>
+      <div class="controls">
+        <button id="uuid-btn" type="button">New UUID</button>
+      </div>
+    </div>
+
+    <div class="row" id="pw-row">
+      <div class="row-label">Password</div>
+      <div class="row-value clickable" id="pw" title="Click to copy"></div>
+      <div class="controls">
+        <label>Length <input type="range" id="pw-len" min="8" max="64" value="20"> <span id="pw-len-val">20</span></label>
+        <label><input type="checkbox" id="pw-upper" checked> A-Z</label>
+        <label><input type="checkbox" id="pw-lower" checked> a-z</label>
+        <label><input type="checkbox" id="pw-digits" checked> 0-9</label>
+        <label><input type="checkbox" id="pw-symbols" checked> !@#</label>
+        <button id="pw-btn" type="button">New password</button>
+      </div>
+    </div>
+
+    <div class="row" id="dice-row">
+      <div class="row-label">Dice</div>
+      <div class="row-value clickable" id="dice" title="Click to copy"></div>
+      <div class="controls">
+        <input type="number" id="dice-count" min="1" max="20" value="2" aria-label="Number of dice">
+        <select id="dice-sides" aria-label="Sides">
+          <option value="4">d4</option>
+          <option value="6" selected>d6</option>
+          <option value="8">d8</option>
+          <option value="10">d10</option>
+          <option value="12">d12</option>
+          <option value="20">d20</option>
+          <option value="100">d100</option>
+        </select>
+        <button id="dice-btn" type="button">Roll</button>
+      </div>
+    </div>
+{% endblock %}
+{% block scripts %}
+  <script nonce="{{ request.state.csp_nonce }}">
+    (function() {
+      const $ = id => document.getElementById(id);
+
+      // Unbiased integer in [0, max) via rejection sampling.
+      function randInt(max) {
+        const limit = Math.floor(0x100000000 / max) * max;
+        const buf = new Uint32Array(1);
+        do { crypto.getRandomValues(buf); } while (buf[0] >= limit);
+        return buf[0] % max;
+      }
+
+      function uuidv4() {
+        const b = crypto.getRandomValues(new Uint8Array(16));
+        b[6] = (b[6] & 0x0f) | 0x40;
+        b[8] = (b[8] & 0x3f) | 0x80;
+        const h = Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
+        return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+      }
+
+      const SETS = {
+        'pw-upper': 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+        'pw-lower': 'abcdefghijklmnopqrstuvwxyz',
+        'pw-digits': '0123456789',
+        'pw-symbols': '!@#$%^&*()-_=+[]{};:,.<>?/~',
+      };
+
+      function password() {
+        const sets = Object.keys(SETS).filter(id => $(id).checked).map(id => SETS[id]);
+        if (!sets.length) return 'Pick at least one character set';
+        const len = Math.max(+$('pw-len').value, sets.length);
+        const all = sets.join('');
+        // Guarantee one char from each selected set, then shuffle.
+        const chars = sets.map(s => s[randInt(s.length)]);
+        while (chars.length < len) chars.push(all[randInt(all.length)]);
+        for (let i = chars.length - 1; i > 0; i--) {
+          const j = randInt(i + 1);
+          [chars[i], chars[j]] = [chars[j], chars[i]];
+        }
+        return chars.join('');
+      }
+
+      function roll() {
+        const count = Math.min(Math.max(parseInt($('dice-count').value, 10) || 1, 1), 20);
+        const sides = +$('dice-sides').value;
+        $('dice-count').value = count;
+        const rolls = Array.from({ length: count }, () => randInt(sides) + 1);
+        const el = $('dice');
+        el.textContent = rolls.join(' ');
+        if (count > 1) {
+          const total = document.createElement('span');
+          total.className = 'dice-total';
+          total.textContent = `  = ${rolls.reduce((a, b) => a + b, 0)}`;
+          el.appendChild(total);
+        }
+      }
+
+      function copy(el) {
+        const text = el.firstChild ? el.firstChild.textContent : '';
+        if (!text) return;
+        navigator.clipboard.writeText(text).then(() => {
+          const row = el.closest('.row');
+          row.classList.add('copied');
+          setTimeout(() => row.classList.remove('copied'), 1500);
+        });
+      }
+
+      const newUuid = () => { $('uuid').textContent = uuidv4(); };
+      const newPw = () => { $('pw').textContent = password(); };
+
+      $('uuid-btn').addEventListener('click', newUuid);
+      $('pw-btn').addEventListener('click', newPw);
+      $('dice-btn').addEventListener('click', roll);
+      $('pw-len').addEventListener('input', () => { $('pw-len-val').textContent = $('pw-len').value; newPw(); });
+      Object.keys(SETS).forEach(id => $(id).addEventListener('change', newPw));
+      $('dice-sides').addEventListener('change', roll);
+      $('dice-count').addEventListener('change', roll);
+      document.querySelectorAll('.row-value.clickable').forEach(el => el.addEventListener('click', () => copy(el)));
+
+      newUuid();
+      newPw();
+      roll();
+    })();
+  </script>
+{% endblock %}

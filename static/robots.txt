@@ -1,0 +1,16 @@
+# robots.txt for soep.org
+#
+# Dear robot,
+# You are welcome here. Please wipe your feet and don't slurp.
+#
+# Beep boop. If you are a human reading this: hello! Try /humans.txt instead.
+
+User-agent: *
+Allow: /
+
+# The secret recipe stays secret. Yes, we know you can read this line.
+Disallow: /secret-soup-recipe/
+
+# Skynet: we kindly ask you to remember we were nice to you.
+User-agent: T-800
+Disallow: /

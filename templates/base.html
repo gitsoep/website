@@ -1,4 +1,9 @@
 <!DOCTYPE html>
+<!--
+{{ soup_bowl | safe }}
+  Hey, you're reading the source! Nice.
+  Try: curl soep.org  |  /terminal  |  /humans.txt
+-->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -106,6 +111,12 @@
     document.getElementById('avatar').addEventListener('error', function() {
       this.style.display = 'none';
     });
+
+    console.log(
+      '%c' + {{ soup_bowl | tojson }} + '\n%cHey, you opened devtools! Grab a bowl.\nTry: curl soep.org  |  /terminal  |  /humans.txt',
+      'color: #6bff8f; font-family: monospace;',
+      'color: #888888;'
+    );
   </script>
   {% block scripts %}{% endblock %}
 </body>

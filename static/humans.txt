@@ -1,0 +1,20 @@
+/* TEAM */
+  Chef: Soep
+  Site: https://soep.org
+  Location: Somewhere near a stove, The Netherlands
+
+/* THANKS */
+  Coffee, for obvious reasons
+  Every bowl of soup that was eaten while debugging
+  You, for reading a humans.txt. Respect.
+
+/* SITE */
+  Language: English
+  Standards: HTML5, CSS3, a strict Content-Security-Policy
+  Components: FastAPI, Jinja2, Uvicorn
+  Software: Vim (we know how to exit, mostly)
+  Ingredients: Python, broth, a pinch of salt
+
+/* EASTER EGGS */
+  curl soep.org
+  https://soep.org/terminal  (try: sudo rm -rf /)
